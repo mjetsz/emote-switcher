@@ -3,9 +3,19 @@ const REST = "https://7tv.io/v3";
 const GQL = "https://7tv.io/v3/gql";
 
 export const EVENT_TAGS = {
-  christmas: ["christmas", "holiday", "xmas"],
-  halloween: ["halloween", "spooky", "october"],
-  easter: ["easter", "spring", "bunny"],
+  christmas: [
+    "christmas",
+    "xmas",
+    "holiday",
+    "holidays",
+    "santa",
+    "santahat",
+    "navidad",
+    "festive",
+    "reindeer",
+  ],
+  halloween: ["halloween", "spooky", "spoopy", "pumpkin", "ween"],
+  easter: ["easter", "páscoa", "pascoa", "egg", "eggs"],
 };
 
 const channelPattern = /^[A-Za-z0-9_]{1,25}$/;
