@@ -58,6 +58,8 @@ const state = {
   rows: [],
   extras: [],
   tab: "all",
+  // The festive set as currently saved on 7TV, by emote name.
+  saved: new Map(),
   busy: false,
 };
 
@@ -428,6 +430,7 @@ function applyCurrent(festiveEmotes, exists) {
 async function loadExtras() {
   const setName = targetSetName();
   state.extras = [];
+  state.saved = new Map();
   applyCurrent([], false);
   renderExtras();
   if (state.rows.length === 0) return;
@@ -436,6 +439,7 @@ async function loadExtras() {
     const emotes = existing ? (await getEmoteSet(existing.id)).emotes : [];
     if (setName !== targetSetName()) return;
     els.extrasSet.textContent = setName;
+    state.saved = new Map(emotes.map((e) => [e.name, e]));
     const originalNames = new Set(state.rows.map((r) => r.original.name));
     state.extras = emotes
       .filter((e) => !originalNames.has(e.name))
@@ -528,9 +532,20 @@ function matchesFilter(row) {
       return row.mode === "change" || (row.mode === "keep" && isRenamed(row));
     case "dropped":
       return row.mode === "drop";
+    case "unsaved":
+      return differsFromSaved(row);
     default:
       return true;
   }
+}
+
+// Whether saving would change this emote's entry in the existing festive set.
+function differsFromSaved(row) {
+  const saved = state.saved.get(aliasOf(row));
+  if (row.mode === "drop") return !!saved;
+  const target =
+    row.mode === "change" && row.selected ? row.selected : row.original.id;
+  return saved?.id !== target;
 }
 
 function updateExtras() {
