@@ -29,6 +29,7 @@ const els = {
   summary: $("summary"),
   status: $("status"),
   save: $("save"),
+  targetName: $("target-name"),
   extrasSection: $("extras-section"),
   extrasSet: $("extras-set"),
   extrasGrid: $("extras-grid"),
@@ -564,8 +565,20 @@ function updateExtras() {
   els.extrasSection.hidden = extrasLeft === 0;
 }
 
-function targetSetName() {
+function defaultSetName() {
   return `${state.setName}-${els.event.value}`;
+}
+
+function targetSetName() {
+  return els.targetName.value.trim() || defaultSetName();
+}
+
+// Custom names are remembered per base set and event.
+const targetNameKey = () =>
+  `emote-switcher:target:${state.setName}:${els.event.value}`;
+
+function restoreTargetName() {
+  els.targetName.value = localStorage.getItem(targetNameKey()) || "";
 }
 
 function updateSummary() {
@@ -581,7 +594,8 @@ function updateSummary() {
       (renamed ? `, ${renamed} renamed` : "") +
       (removing ? `, ${removing} extras removed` : "")
     : "";
-  els.save.textContent = state.setName ? `Save to ${targetSetName()}` : "Save";
+  els.targetName.placeholder = state.setName ? defaultSetName() : "Set name";
+  els.save.textContent = "Save";
   els.save.disabled = state.busy || state.rows.length === 0;
   updateCopyButton();
 }
@@ -717,6 +731,7 @@ async function loadChannel(setId = "") {
     state.userId = userId;
     state.setId = set.id;
     state.setName = set.name;
+    restoreTargetName();
     localStorage.setItem(LAST_CHANNEL_KEY, name);
     setOptions(els.baseSet, sets, set.id, activeSet?.id);
 
@@ -828,16 +843,16 @@ async function save() {
   );
   const removing = state.extras.length - keepExtras.size;
   const name = targetSetName();
+  if (name.length > 100)
+    return setStatus("Set name can be at most 100 characters", true);
   const parts = [`${changed} replaced`];
   if (dropped) parts.push(`${dropped} dropped`);
   if (renamed) parts.push(`${renamed} renamed`);
   if (removing) parts.push(`${removing} extras removed`);
-  if (
-    !confirm(
-      `Save "${name}" with ${parts.join(", ")}?\nAn existing set with that name will be overwritten.`,
-    )
-  )
-    return;
+  let message = `Save "${name}" with ${parts.join(", ")}?\nAn existing set with that name will be overwritten.`;
+  if (name === state.setName)
+    message += `\n\nWARNING: "${name}" is your base emote set, it will be overwritten.`;
+  if (!confirm(message)) return;
 
   setBusy(true);
   const label = `Saving ${name}`;
@@ -878,7 +893,14 @@ copyEls.copy.addEventListener("click", copySet);
 els.find.addEventListener("click", findVariants);
 els.save.addEventListener("click", save);
 els.event.addEventListener("change", () => {
+  restoreTargetName();
   updateSummary();
+  loadExtras();
+});
+els.targetName.addEventListener("change", () => {
+  const custom = els.targetName.value.trim();
+  if (custom) localStorage.setItem(targetNameKey(), custom);
+  else localStorage.removeItem(targetNameKey());
   loadExtras();
 });
 els.baseSet.addEventListener("change", () => loadChannel(els.baseSet.value));
