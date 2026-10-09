@@ -14,7 +14,7 @@ Swap your 7TV emotes for festive variants (Christmas, Halloween, Easter) and sav
 - **Copy sets**: copy any emote set from another channel into your account.
 - **Any base set**: choose which of your emote sets to make festive.
 
-Festive sets are named `<base set>-<event>`, e.g. `mjets-christmas`. Saving to a name that already exists updates that set in place.
+Festive sets are named `<base set>-<event>` by default, e.g. `mjets-christmas`; you can pick another name in the **Save as** field. Saving to a name that already exists updates that set in place.
 
 ## Usage
 
