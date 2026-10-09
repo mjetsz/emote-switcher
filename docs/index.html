@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Locks the page to its own scripts and 7TV/decapi, so the token can't be sent anywhere else. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src https://cdn.7tv.app; connect-src https://7tv.io https://decapi.me; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Emote Switcher</title>
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="brand">
+    <div class="logo"></div>
+    <div>
+      <h1>Emote Switcher</h1>
+      <p>Swap your 7TV emotes for festive variants</p>
+    </div>
+  </div>
+
+  <section class="panel controls">
+    <form class="field" id="channel-form">
+      <span>Channel</span>
+      <div class="inline">
+        <input id="channel" placeholder="Twitch channel" autocomplete="off" spellcheck="false">
+        <button type="submit" id="load">Load</button>
+      </div>
+    </form>
+    <label class="field">
+      <span>Base emote set</span>
+      <select id="base-set" disabled></select>
+    </label>
+    <label class="field">
+      <span>Event</span>
+      <select id="event">
+        <option value="christmas">Christmas</option>
+        <option value="halloween">Halloween</option>
+        <option value="easter">Easter</option>
+      </select>
+    </label>
+    <label class="field token-field">
+      <span>7TV token <span class="info" aria-hidden="true">?</span></span>
+      <input id="token" type="password" autocomplete="off" placeholder="Paste your 7TV token" aria-describedby="token-help">
+      <small>Only sent to 7tv.io, never stored.</small>
+      <div class="tooltip" id="token-help" role="tooltip">
+        <strong>How to get your token</strong>
+        <ol>
+          <li>Open <b>7tv.app</b> and log in</li>
+          <li>Press <kbd>F12</kbd> and open the <b>Console</b> tab</li>
+          <li>Type this and press <kbd>Enter</kbd>:<code>localStorage.getItem("7tv-token")</code></li>
+          <li>Copy the result without the quotes</li>
+        </ol>
+        <em>Treat it like a password: anyone with it can edit your 7TV account.</em>
+      </div>
+    </label>
+    <button id="find" class="primary">Find festive variants</button>
+  </section>
+
+  <details class="panel copy-panel">
+    <summary>Copy an emote set from another channel</summary>
+    <div class="copy-body">
+      <form class="field" id="source-form">
+        <span>From channel</span>
+        <div class="inline">
+          <input id="source-channel" placeholder="Twitch channel" autocomplete="off" spellcheck="false">
+          <button type="submit" id="source-load">Find sets</button>
+        </div>
+      </form>
+      <label class="field">
+        <span>Emote set</span>
+        <select id="source-set" disabled></select>
+      </label>
+      <label class="field">
+        <span>New set name</span>
+        <input id="copy-name" placeholder="Name in your account" autocomplete="off" spellcheck="false">
+      </label>
+      <button id="copy" class="primary" disabled>Copy</button>
+    </div>
+    <div id="copy-preview" class="copy-preview" hidden>
+      <div class="copy-count" id="copy-count"></div>
+      <div class="preview-strip" id="preview-strip"></div>
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <div class="search"><input id="filter" type="search" placeholder="Search emotes..." autocomplete="off"></div>
+    <div class="tabs" id="tabs">
+      <button data-tab="all" class="active">All</button>
+      <button data-tab="variants">With variants</button>
+      <button data-tab="none">No variants</button>
+      <button data-tab="changing">Changing</button>
+      <button data-tab="dropped">Dropped</button>
+    </div>
+    <span id="count"></span>
+  </div>
+
+  <section id="extras-section" class="extras" hidden>
+    <div class="section-head">
+      <h2>Only in <span id="extras-set"></span></h2>
+      <p>These emotes are in the festive set but not in your base set. Turn them off to remove them when saving.</p>
+    </div>
+    <div id="extras-grid" class="grid"></div>
+  </section>
+
+  <main id="grid" class="grid"></main>
+</div>
+
+<footer class="savebar">
+  <div class="progress" id="progress-wrap" hidden><div class="bar" id="progress-bar"></div></div>
+  <div class="container">
+    <span id="summary"></span>
+    <span id="status"></span>
+    <button id="save" class="primary" disabled>Save</button>
+  </div>
+</footer>
+</body>
+</html>
