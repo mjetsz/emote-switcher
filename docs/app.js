@@ -440,8 +440,8 @@ async function loadExtras() {
     state.extras = emotes
       .filter((e) => !originalNames.has(e.name))
       .map((e) => ({ emote: e, keep: true }));
-    applyCurrent(emotes, !!existing);
     renderExtras();
+    applyCurrent(emotes, !!existing);
   } catch (err) {
     setStatus("Error: " + err.message, true);
   }
