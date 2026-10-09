@@ -61,8 +61,12 @@ const state = {
   busy: false,
 };
 
-const emoteImg = (id) =>
-  `https://cdn.7tv.app/emote/${encodeURIComponent(id)}/2x.webp`;
+const emoteImg = (id, size = "2x") =>
+  `https://cdn.7tv.app/emote/${encodeURIComponent(id)}/${size}.webp`;
+
+// Big sets are rendered in pages; every card holds animated images, which is what eats memory.
+const PAGE_SIZE = 60;
+const PREVIEW_LIMIT = 120;
 
 function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -231,7 +235,7 @@ function renderCard(row) {
     oninput: (e) => {
       row.alias = e.target.value;
       saveAliases();
-      applyFilter();
+      updateExtras();
       updateSummary();
     },
     onchange: () => update(row),
@@ -337,10 +341,13 @@ function renderCard(row) {
 }
 
 function update(row) {
-  const next = renderCard(row);
-  row.el.replaceWith(next);
-  row.el = next;
-  applyFilter();
+  if (row.el) {
+    const next = renderCard(row);
+    row.el.replaceWith(next);
+    row.el = next;
+    row.el.hidden = !matchesFilter(row);
+  }
+  updateExtras();
   updateSummary();
 }
 
@@ -353,7 +360,7 @@ function renderExtraCard(extra) {
       const next = renderExtraCard(extra);
       extra.el.replaceWith(next);
       extra.el = next;
-      applyFilter();
+      updateExtras();
       updateSummary();
     },
   });
@@ -385,7 +392,7 @@ function renderExtraCard(extra) {
 function renderExtras() {
   for (const extra of state.extras) extra.el = renderExtraCard(extra);
   els.extrasGrid.replaceChildren(...state.extras.map((x) => x.el));
-  applyFilter();
+  updateExtras();
   updateSummary();
 }
 
@@ -440,17 +447,67 @@ async function loadExtras() {
   }
 }
 
-function renderAll() {
+let matches = [];
+let rendered = 0;
+const showMore = el(
+  "button",
+  { type: "button", class: "show-more", onclick: () => renderMore() },
+  "Show more",
+);
+const pager = new IntersectionObserver(
+  (entries) => {
+    if (entries.some((e) => e.isIntersecting)) renderMore();
+  },
+  { rootMargin: "800px" },
+);
+els.grid.after(showMore);
+pager.observe(showMore);
+
+// Drops all card elements and renders the first count rows that match the filter.
+function renderRows(count) {
+  for (const row of state.rows) row.el = null;
+  matches = state.rows.filter(matchesFilter);
+  rendered = 0;
   if (state.rows.length === 0) {
     els.grid.replaceChildren(
       el("div", { class: "empty-state" }, "Load a channel to see its emotes"),
     );
+  } else if (matches.length === 0) {
+    els.grid.replaceChildren(
+      el("div", { class: "empty-state" }, "No emotes match"),
+    );
   } else {
-    for (const row of state.rows) row.el = renderCard(row);
-    els.grid.replaceChildren(...state.rows.map((r) => r.el));
+    els.grid.replaceChildren();
   }
-  applyFilter();
+  renderMore(count);
+  els.count.textContent = state.rows.length
+    ? `${matches.length} of ${state.rows.length} emotes`
+    : "";
+}
+
+function renderMore(count = PAGE_SIZE) {
+  const next = matches.slice(rendered, rendered + count);
+  for (const row of next) row.el = renderCard(row);
+  els.grid.append(...next.map((r) => r.el));
+  rendered += next.length;
+  showMore.hidden = rendered >= matches.length;
+  // Re-observing re-checks visibility, so a tall screen keeps filling until it's covered.
+  if (!showMore.hidden) {
+    pager.unobserve(showMore);
+    pager.observe(showMore);
+  }
+}
+
+// Keeps as many cards rendered as before, so saving or reloading doesn't jump back to the top.
+function renderAll() {
+  renderRows(Math.max(rendered, PAGE_SIZE));
+  updateExtras();
   updateSummary();
+}
+
+function applyFilter() {
+  renderRows(PAGE_SIZE);
+  updateExtras();
 }
 
 function matchesFilter(row) {
@@ -476,17 +533,7 @@ function matchesFilter(row) {
   }
 }
 
-function applyFilter() {
-  let shown = 0;
-  for (const row of state.rows) {
-    const show = matchesFilter(row);
-    row.el.hidden = !show;
-    if (show) shown++;
-  }
-  els.count.textContent = state.rows.length
-    ? `${shown} of ${state.rows.length} emotes`
-    : "";
-
+function updateExtras() {
   const q = els.filter.value.trim().toLowerCase();
   // Extras whose name is now used by one of the base emotes get replaced anyway, so don't offer them.
   const aliases = new Set(
@@ -579,11 +626,14 @@ async function previewSourceSet() {
     const set = await getEmoteSet(id);
     if (copyEls.set.value !== id) return;
     sourceEmotes = set.emotes;
-    copyEls.count.textContent = `${set.emotes.length} emotes`;
+    const hidden = set.emotes.length - PREVIEW_LIMIT;
+    copyEls.count.textContent =
+      `${set.emotes.length} emotes` +
+      (hidden > 0 ? ` (showing the first ${PREVIEW_LIMIT})` : "");
     copyEls.strip.replaceChildren(
-      ...set.emotes.map((e) =>
+      ...set.emotes.slice(0, PREVIEW_LIMIT).map((e) =>
         el("img", {
-          src: emoteImg(e.id),
+          src: emoteImg(e.id, "1x"),
           alt: e.name,
           title: e.name,
           loading: "lazy",
@@ -666,6 +716,7 @@ async function loadChannel(setId = "") {
       searched: false,
       error: "",
     }));
+    rendered = 0;
     renderAll();
     setStatus(`Loaded ${set.emotes.length} emotes from ${set.name}`);
   } catch (err) {
