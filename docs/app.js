@@ -33,6 +33,10 @@ const els = {
   extrasSection: $("extras-section"),
   extrasSet: $("extras-set"),
   extrasGrid: $("extras-grid"),
+  addForm: $("add-form"),
+  addUrl: $("add-url"),
+  addName: $("add-name"),
+  add: $("add"),
 };
 const copyEls = {
   form: $("source-form"),
@@ -107,6 +111,7 @@ function setBusy(busy) {
   state.busy = busy;
   els.load.disabled = busy;
   els.find.disabled = busy;
+  els.add.disabled = busy;
   els.baseSet.disabled = busy || !state.channel;
   updateSummary();
 }
@@ -355,6 +360,32 @@ function update(row) {
 }
 
 function renderExtraCard(extra) {
+  if (extra.added) {
+    const remove = el(
+      "button",
+      {
+        type: "button",
+        onclick: () => {
+          state.extras = state.extras.filter((x) => x !== extra);
+          extra.el.remove();
+          updateExtras();
+          updateSummary();
+        },
+      },
+      "Remove",
+    );
+    return el(
+      "article",
+      { class: "card changing" },
+      el(
+        "div",
+        { class: "card-head" },
+        el("div", { class: "pair" }, emoteFigure(extra.emote)),
+        remove,
+      ),
+      el("div", { class: "hint keep" }, "Will be added on save"),
+    );
+  }
   const toggle = el("input", {
     type: "checkbox",
     checked: extra.keep,
@@ -399,6 +430,37 @@ function renderExtras() {
   updateSummary();
 }
 
+async function addExtra() {
+  const value = els.addUrl.value.trim();
+  if (!value) return;
+  els.add.disabled = true;
+  try {
+    const emote = await getEmote(parseEmoteID(value));
+    const name = els.addName.value.trim() || emote.name;
+    if (/\s/.test(name) || name.length > 100)
+      throw new Error(
+        `"${name}" is not a valid name: no spaces, max 100 characters`,
+      );
+    const taken =
+      state.rows.some((r) => r.mode !== "drop" && aliasOf(r) === name) ||
+      state.extras.some((x) => x.keep && x.emote.name === name);
+    if (taken) throw new Error(`"${name}" is already used in the festive set`);
+    const extra = { emote: { id: emote.id, name }, keep: true, added: true };
+    extra.el = renderExtraCard(extra);
+    state.extras.push(extra);
+    els.extrasGrid.append(extra.el);
+    els.addUrl.value = "";
+    els.addName.value = "";
+    updateExtras();
+    updateSummary();
+    setStatus(`${name} will be added on save`);
+  } catch (err) {
+    setStatus("Error: " + err.message, true);
+  } finally {
+    els.add.disabled = state.busy;
+  }
+}
+
 // Mirrors the existing festive set: its emote under each row's name becomes a "current" option, and
 // untouched rows default to Change (different emote there), Drop (name missing from the set) or Keep.
 function applyCurrent(festiveEmotes, exists) {
@@ -432,6 +494,7 @@ async function loadExtras() {
   const setName = targetSetName();
   state.extras = [];
   state.saved = new Map();
+  els.extrasSet.textContent = setName;
   applyCurrent([], false);
   renderExtras();
   if (state.rows.length === 0) return;
@@ -439,7 +502,6 @@ async function loadExtras() {
     const existing = await findEmoteSetByName(state.userId, setName);
     const emotes = existing ? (await getEmoteSet(existing.id)).emotes : [];
     if (setName !== targetSetName()) return;
-    els.extrasSet.textContent = setName;
     state.saved = new Map(emotes.map((e) => [e.name, e]));
     const originalNames = new Set(state.rows.map((r) => r.original.name));
     state.extras = emotes
@@ -555,14 +617,12 @@ function updateExtras() {
   const aliases = new Set(
     state.rows.filter((r) => r.mode !== "drop").map(aliasOf),
   );
-  let extrasLeft = 0;
   for (const extra of state.extras) {
-    const taken = aliases.has(extra.emote.name);
-    if (!taken) extrasLeft++;
+    const taken = !extra.added && aliases.has(extra.emote.name);
     extra.el.hidden =
       taken || (!!q && !extra.emote.name.toLowerCase().includes(q));
   }
-  els.extrasSection.hidden = extrasLeft === 0;
+  els.extrasSection.hidden = state.rows.length === 0;
 }
 
 function defaultSetName() {
@@ -588,10 +648,12 @@ function updateSummary() {
     (r) => r.mode !== "drop" && isRenamed(r),
   ).length;
   const removing = state.extras.filter((x) => !x.keep).length;
+  const adding = state.extras.filter((x) => x.added).length;
   els.summary.textContent = state.rows.length
     ? `${changing} of ${state.rows.length} will be replaced` +
       (dropping ? `, ${dropping} dropped` : "") +
       (renamed ? `, ${renamed} renamed` : "") +
+      (adding ? `, ${adding} added` : "") +
       (removing ? `, ${removing} extras removed` : "")
     : "";
   els.targetName.placeholder = state.setName ? defaultSetName() : "Set name";
@@ -838,16 +900,31 @@ async function save() {
     if (isRenamed(row)) renamed++;
     entries.push({ id: replace ? row.selected : row.original.id, name: alias });
   }
+  const existingExtras = state.extras.filter((x) => !x.added);
   const keepExtras = new Set(
-    state.extras.filter((x) => x.keep).map((x) => x.emote.name),
+    existingExtras.filter((x) => x.keep).map((x) => x.emote.name),
   );
-  const removing = state.extras.length - keepExtras.size;
+  const removing = existingExtras.length - keepExtras.size;
+  let added = 0;
+  for (const extra of state.extras) {
+    if (!extra.added) continue;
+    const alias = extra.emote.name;
+    if (seen.has(alias) || keepExtras.has(alias))
+      return setStatus(
+        `The added emote "${alias}" uses a name that's already in the festive set`,
+        true,
+      );
+    seen.set(alias, alias);
+    entries.push({ id: extra.emote.id, name: alias });
+    added++;
+  }
   const name = targetSetName();
   if (name.length > 100)
     return setStatus("Set name can be at most 100 characters", true);
   const parts = [`${changed} replaced`];
   if (dropped) parts.push(`${dropped} dropped`);
   if (renamed) parts.push(`${renamed} renamed`);
+  if (added) parts.push(`${added} added`);
   if (removing) parts.push(`${removing} extras removed`);
   let message = `Save "${name}" with ${parts.join(", ")}?\nAn existing set with that name will be overwritten.`;
   if (name === state.setName)
@@ -868,7 +945,8 @@ async function save() {
     );
     hideProgress();
     setStatus(
-      `${created ? "Created" : "Updated"} ${name}: ${changed} replaced, ${dropped} dropped`,
+      `${created ? "Created" : "Updated"} ${name}: ${changed} replaced, ${dropped} dropped` +
+        (added ? `, ${added} added` : ""),
     );
     loadExtras();
   } catch (err) {
@@ -882,6 +960,10 @@ async function save() {
 els.channelForm.addEventListener("submit", (e) => {
   e.preventDefault();
   loadChannel();
+});
+els.addForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  addExtra();
 });
 copyEls.form.addEventListener("submit", (e) => {
   e.preventDefault();
