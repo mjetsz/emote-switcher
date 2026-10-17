@@ -1,9 +1,9 @@
-import { Controls } from "./Controls.jsx";
-import { CopyPanel } from "./CopyPanel.jsx";
-import { EmoteGrid } from "./EmoteGrid.jsx";
-import { ExtrasSection } from "./ExtrasSection.jsx";
-import { SaveBar } from "./SaveBar.jsx";
-import { Toolbar } from "./Toolbar.jsx";
+import { Controls } from "./sections/Controls.jsx";
+import { CopyPanel } from "./sections/CopyPanel.jsx";
+import { EmoteGrid } from "./sections/EmoteGrid.jsx";
+import { ExtrasSection } from "./sections/ExtrasSection.jsx";
+import { SaveBar } from "./sections/SaveBar.jsx";
+import { Toolbar } from "./sections/Toolbar.jsx";
 import styles from "./App.module.css";
 
 export function App() {

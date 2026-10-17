@@ -7,10 +7,10 @@ import {
   rows,
   showError,
   visibleExtras,
-} from "../store.js";
-import { EmoteCard } from "./EmoteCard.jsx";
-import { Hint } from "./Hint.jsx";
-import { OptionButton } from "./OptionButton.jsx";
+} from "../state/store.js";
+import { EmoteCard } from "../components/EmoteCard.jsx";
+import { Hint } from "../components/Hint.jsx";
+import { OptionButton } from "../components/OptionButton.jsx";
 import styles from "./ExtrasSection.module.css";
 
 function emoteIdOrNull(value) {

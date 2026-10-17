@@ -1,4 +1,4 @@
-import { cx } from "../cx.js";
+import { cx } from "../lib/cx.js";
 import {
   activeSetId,
   busy,
@@ -11,7 +11,7 @@ import {
   setId,
   sets,
   token,
-} from "../store.js";
+} from "../state/store.js";
 import styles from "./Controls.module.css";
 
 const EVENTS = [

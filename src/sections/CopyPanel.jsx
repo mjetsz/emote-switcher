@@ -1,8 +1,8 @@
 import { useRef, useState } from "preact/hooks";
 import { getChannel, getEmoteSet, getUserEmoteSets } from "../api/seventv.js";
-import { cx } from "../cx.js";
-import { emoteImg } from "../model.js";
-import { busy, channel, copySet, setStatus, showError } from "../store.js";
+import { cx } from "../lib/cx.js";
+import { emoteImg } from "../state/model.js";
+import { busy, channel, copySet, setStatus, showError } from "../state/store.js";
 import styles from "./CopyPanel.module.css";
 
 const PREVIEW_LIMIT = 120;

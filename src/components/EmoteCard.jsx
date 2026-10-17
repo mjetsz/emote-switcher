@@ -1,6 +1,6 @@
 import { memo } from "preact/compat";
-import { cx } from "../cx.js";
-import * as m from "../model.js";
+import { cx } from "../lib/cx.js";
+import * as m from "../state/model.js";
 import {
   event,
   pickOption,
@@ -8,7 +8,7 @@ import {
   setAlias,
   setMode,
   useEmoteUrl,
-} from "../store.js";
+} from "../state/store.js";
 import { EmoteFigure } from "./EmoteFigure.jsx";
 import { Hint } from "./Hint.jsx";
 import { NameField } from "./NameField.jsx";

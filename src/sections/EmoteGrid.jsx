@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { filter, matches, rows, setId, tab } from "../store.js";
-import { EmoteCard } from "./EmoteCard.jsx";
+import { filter, matches, rows, setId, tab } from "../state/store.js";
+import { EmoteCard } from "../components/EmoteCard.jsx";
 import styles from "./EmoteGrid.module.css";
 
 // Big sets are rendered in pages; every card holds animated images, which is what eats memory.

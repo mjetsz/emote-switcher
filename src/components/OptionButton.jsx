@@ -1,5 +1,5 @@
-import { cx } from "../cx.js";
-import { emoteImg } from "../model.js";
+import { cx } from "../lib/cx.js";
+import { emoteImg } from "../state/model.js";
 import styles from "./OptionButton.module.css";
 
 export function OptionButton({ option, selected, onClick }) {

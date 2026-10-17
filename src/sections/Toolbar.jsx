@@ -1,4 +1,4 @@
-import { filter, matches, rows, tab } from "../store.js";
+import { filter, matches, rows, tab } from "../state/store.js";
 import styles from "./Toolbar.module.css";
 
 const TABS = [

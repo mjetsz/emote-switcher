@@ -1,4 +1,4 @@
-import { cx } from "../cx.js";
+import { cx } from "../lib/cx.js";
 import styles from "./Segmented.module.css";
 
 // modes: [{ mode, label, title, disabled }]; "change" and "drop" get their own active colour.

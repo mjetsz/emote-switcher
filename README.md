@@ -39,26 +39,53 @@ Treat the token like a password: anyone with it can edit your 7TV account. The p
 
 ## Running locally
 
-The site is plain HTML/CSS/JS with no build step. ES modules don't load from `file://`, so serve the folder:
+Built with [Preact](https://preactjs.com) + [Signals](https://preactjs.com/guide/v10/signals) and [Vite](https://vite.dev). Requires Node.js.
 
 ```powershell
-python -m http.server 8090 --directory docs
+npm install
+npm run dev       # dev server with live reload
+npm run build     # production build into dist/
+npm run preview   # serve the production build (with the Content Security Policy)
 ```
 
-Then open http://127.0.0.1:8090.
+The Content Security Policy is only added to the production build, since the dev server needs inline styles and a websocket.
 
 ## Project structure
 
 ```
-docs/
-  index.html   page markup
-  styles.css   styling
-  app.js       UI and page state
-  seventv.js   7TV / decapi.me API calls, variant matching, emote set syncing
-.github/workflows/pages.yml   deploys docs/ to GitHub Pages on push to main
+index.html               page shell, Vite entry
+vite.config.js           Vite config, injects the Content Security Policy at build time
+public/logo.svg          logo and favicon
+src/
+  main.jsx               mounts the app
+  App.jsx                page layout: header, logo and the sections below
+  api/seventv.js         7TV / decapi.me API calls, variant matching, emote set syncing
+  state/
+    model.js             card logic (names, targets, variant merging), pure functions
+    store.js             app state as signals, plus actions (load, search, save, copy)
+  lib/cx.js              joins class names
+  styles/base.css        global: theme variables, layout (.container, .panel, .grid, .field), inputs and buttons
+  sections/              page areas, used once by App:
+    Controls             channel / set / event / token panel
+    CopyPanel            copy a set from another channel
+    Toolbar              search, tabs, count
+    ExtrasSection        "Only in <set>" section and the add-emote form
+    EmoteGrid            paged grid of base emotes
+    SaveBar              bottom bar: changes vs base, changes on save, status and save button
+  components/            reusable UI pieces:
+    EmoteCard            one emote card (base or festive-only)
+    EmoteFigure          emote image with caption
+    OptionButton         pickable emote tile
+    Segmented            Keep / Change / Drop switch
+    NameField            "Name in set" input
+    UrlForm              "Paste a 7TV emote URL" form
+    Hint                 coloured status line
+
+Every .jsx in sections/ and components/ has a scoped CSS Module (*.module.css) next to it.
+.github/workflows/pages.yml   builds and deploys to GitHub Pages on push to main
 ```
 
-To add an event, add its tags to `EVENT_TAGS` in [docs/seventv.js](docs/seventv.js) and an `<option>` to the event dropdown in [docs/index.html](docs/index.html).
+To add an event, add its tags to `EVENT_TAGS` in [src/api/seventv.js](src/api/seventv.js) and an entry to `EVENTS` in [src/sections/Controls.jsx](src/sections/Controls.jsx).
 
 ## Notes
 

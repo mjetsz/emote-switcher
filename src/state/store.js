@@ -1,5 +1,5 @@
 import { signal, computed, batch } from "@preact/signals";
-import * as api from "./api/seventv.js";
+import * as api from "../api/seventv.js";
 import * as m from "./model.js";
 
 const LAST_CHANNEL_KEY = "emote-switcher:channel";
@@ -35,6 +35,8 @@ export const rows = signal([]);
 export const extras = signal([]);
 // The festive set as currently saved on 7TV, by emote name.
 export const saved = signal(new Map());
+// Whether that set exists on 7TV; null while it's being looked up.
+export const savedExists = signal(null);
 
 export const defaultSetName = computed(() =>
   event.value ? `${setName.value}-${event.value}` : setName.value,
@@ -224,6 +226,7 @@ export async function loadExtras() {
   batch(() => {
     extras.value = [];
     saved.value = new Map();
+    savedExists.value = null;
     extrasSetName.value = name;
     applyCurrent([], false);
   });
@@ -235,6 +238,7 @@ export async function loadExtras() {
     const originalNames = new Set(rows.value.map((r) => r.value.original.name));
     batch(() => {
       saved.value = new Map(emotes.map((e) => [e.name, e]));
+      savedExists.value = !!existing;
       extras.value = emotes
         .filter((e) => !originalNames.has(e.name))
         .map((e) => signal(m.newExtra(e)));
@@ -339,58 +343,96 @@ async function writeSet(name, emotes, label, describe) {
   await reload?.();
 }
 
-export async function save() {
-  if (!token.value.trim())
-    return setStatus("Enter your 7TV token first", true);
-
+// What saving would write: one entry per kept card, the counts for the confirm dialog, or the first problem found.
+function planSave() {
   const entries = [];
   const seen = new Map();
-  let changed = 0,
-    dropped = 0,
-    renamed = 0;
+  const counts = {
+    changed: 0,
+    dropped: 0,
+    renamed: 0,
+    added: 0,
+    removing: 0,
+    extrasChanged: 0,
+  };
+  const fail = (error) => ({ entries, counts, error });
+
   for (const { value: row } of rows.value) {
     if (row.mode === "drop") {
-      dropped++;
+      counts.dropped++;
       continue;
     }
     const name = m.nameOf(row);
     const error = m.nameError(name);
-    if (error) return setStatus(error, true);
+    if (error) return fail(error);
     if (seen.has(name))
-      return setStatus(
+      return fail(
         `${seen.get(name)} and ${row.original.name} both use the name "${name}"`,
-        true,
       );
     seen.set(name, row.original.name);
-    if (row.mode === "change" && row.selected) changed++;
-    if (m.isRenamed(row)) renamed++;
+    if (row.mode === "change" && row.selected) counts.changed++;
+    if (m.isRenamed(row)) counts.renamed++;
     entries.push({ id: m.targetOf(row).id, name });
   }
 
   const rowNames = new Set(seen.keys());
-  let added = 0,
-    removing = 0,
-    extrasChanged = 0;
   for (const { value: extra } of extras.value) {
     if (extra.mode === "drop") {
-      removing++;
+      counts.removing++;
       continue;
     }
     // A base emote now uses this name, so its saved entry gets replaced anyway.
     if (!extra.added && rowNames.has(extra.saved.name)) continue;
     const name = m.nameOf(extra);
     const error = m.nameError(name);
-    if (error) return setStatus(error, true);
+    if (error) return fail(error);
     if (seen.has(name))
-      return setStatus(
-        `"${name}" is used more than once in the festive set`,
-        true,
-      );
+      return fail(`"${name}" is used more than once in the festive set`);
     seen.set(name, name);
     entries.push({ id: m.targetOf(extra).id, name });
-    if (extra.added) added++;
-    else if (m.isChanged(extra)) extrasChanged++;
+    if (extra.added) counts.added++;
+    else if (m.isChanged(extra)) counts.extrasChanged++;
   }
+  return { entries, counts, error: null };
+}
+
+// How the saved festive set on 7TV would change when clicking Save.
+export const pendingChanges = computed(() => {
+  const { entries, error } = planSave();
+  if (error) return { error };
+  const current = saved.value;
+  const added = entries.filter((e) => !current.has(e.name));
+  const replaced = entries.filter((e) => {
+    const s = current.get(e.name);
+    return s && s.id !== e.id;
+  }).length;
+  const names = new Set(entries.map((e) => e.name));
+  const removed = [...current.values()].filter((s) => !names.has(s.name));
+  // An emote that disappears under one name and appears under another is a rename.
+  const removedIds = removed.map((s) => s.id);
+  let renamed = 0;
+  for (const e of added) {
+    const i = removedIds.indexOf(e.id);
+    if (i !== -1) {
+      removedIds.splice(i, 1);
+      renamed++;
+    }
+  }
+  return {
+    total: entries.length,
+    added: added.length - renamed,
+    replaced,
+    removed: removed.length - renamed,
+    renamed,
+  };
+});
+
+export async function save() {
+  if (!token.value.trim()) return setStatus("Enter your 7TV token first", true);
+
+  const { entries, counts, error } = planSave();
+  if (error) return setStatus(error, true);
+  const { changed, dropped, renamed, added, removing, extrasChanged } = counts;
 
   const name = targetSetName.value;
   if (name.length > 100)
@@ -419,8 +461,7 @@ export async function save() {
 export async function copySet({ emotes, name, sourceName, sourceChannel }) {
   if (name.length > 100)
     return setStatus("Set name can be at most 100 characters", true);
-  if (!token.value.trim())
-    return setStatus("Enter your 7TV token first", true);
+  if (!token.value.trim()) return setStatus("Enter your 7TV token first", true);
   let message = `Copy ${emotes.length} emotes from "${sourceName}" (${sourceChannel}) into "${name}" on ${channel.value}?\nAn existing set with that name will be overwritten.`;
   if (name === setName.value)
     message += `\n\nWARNING: "${name}" is the emote set you're currently editing.`;

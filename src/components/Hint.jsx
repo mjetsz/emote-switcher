@@ -1,4 +1,4 @@
-import { cx } from "../cx.js";
+import { cx } from "../lib/cx.js";
 import styles from "./Hint.module.css";
 
 // tone: "", "exact", "keep", "partial" or "remove".

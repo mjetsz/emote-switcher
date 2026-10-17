@@ -2,15 +2,18 @@ import {
   busy,
   commitTargetName,
   defaultSetName,
+  pendingChanges,
   progress,
   rows,
   save,
+  savedExists,
   setName,
   status,
   summary,
   targetNameInput,
-} from "../store.js";
-import { cx } from "../cx.js";
+  targetSetName,
+} from "../state/store.js";
+import { cx } from "../lib/cx.js";
 import styles from "./SaveBar.module.css";
 
 function Progress() {
@@ -28,12 +31,47 @@ function Progress() {
   );
 }
 
+function pendingText() {
+  const p = pendingChanges.value;
+  if (p.error) return [`Can't save: ${p.error}`, true];
+  if (savedExists.value === null) return ["Checking the saved set...", false];
+  if (!savedExists.value)
+    return [`Creates ${targetSetName.value} with ${p.total} emotes`, false];
+  const parts = [
+    [p.replaced, "replaced"],
+    [p.added, "added"],
+    [p.renamed, "renamed"],
+    [p.removed, "removed"],
+  ]
+    .filter(([n]) => n)
+    .map(([n, label]) => `${n} ${label}`);
+  return [parts.length ? parts.join(", ") : "Nothing to save", false];
+}
+
+// Two views of the same edits: compared to the base set, and what Save would change on 7TV.
+function Counts() {
+  if (rows.value.length === 0) return null;
+  const [pending, problem] = pendingText();
+  return (
+    <div class={styles.counts}>
+      <span class={styles.summary}>
+        <span class={styles.label}>Vs base</span>
+        {summary.value}
+      </span>
+      <span class={cx(styles.pending, problem && styles.warn)}>
+        <span class={styles.label}>On save</span>
+        {pending}
+      </span>
+    </div>
+  );
+}
+
 export function SaveBar() {
   return (
     <footer class={styles.savebar}>
       <Progress />
       <div class="container">
-        <span class={styles.summary}>{summary.value}</span>
+        <Counts />
         <span class={cx(styles.status, status.value.error && styles.errorText)}>
           {status.value.text}
         </span>

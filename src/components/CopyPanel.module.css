@@ -1,0 +1,12 @@
+/* Collapsible "copy an emote set from another channel" panel. */
+.copy-panel { margin-top: 14px; }
+.copy-panel summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+.copy-panel summary::-webkit-details-marker { display: none; }
+.copy-panel summary::before { content: "\25B8"; color: var(--muted); transition: transform .15s; }
+.copy-panel[open] summary::before { transform: rotate(90deg); }
+.copy-body { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 14px; align-items: end; margin-top: 16px; }
+@media (max-width: 900px) { .copy-body { grid-template-columns: 1fr 1fr; } }
+.preview { margin-top: 14px; }
+.count { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.strip { display: flex; flex-wrap: wrap; gap: 6px; max-height: 168px; overflow-y: auto; }
+.strip img { width: 36px; height: 36px; object-fit: contain; background: rgba(0, 0, 0, .25); border-radius: 8px; padding: 3px; }

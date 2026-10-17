@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { cx } from "../cx.js";
+import { cx } from "../lib/cx.js";
 import styles from "./NameField.module.css";
 
 // Shows what's being typed while focused, and the resolved name otherwise, so the field can be cleared to retype.
