@@ -1,0 +1,8 @@
+/* "Only in <set>" section with the add-emote form. */
+.extras { margin-bottom: 28px; }
+.section-head { margin: 8px 0 12px; }
+.section-head h2 { font-size: 15px; margin: 0; }
+.section-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.add-form { display: flex; gap: 8px; max-width: 640px; margin-bottom: 14px; }
+.add-name { max-width: 200px; }
+.add-results { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }

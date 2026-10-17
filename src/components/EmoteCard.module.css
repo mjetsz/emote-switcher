@@ -1,0 +1,17 @@
+/* A single emote card: original -> festive pair, mode buttons, status line and the error message. */
+.card {
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+.card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+.card.changing { border-color: rgba(169, 112, 255, .55); background: linear-gradient(180deg, rgba(169, 112, 255, .08), var(--surface)); }
+.card.dropped { opacity: .6; border-color: rgba(255, 107, 129, .45); }
+
+.pair { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.arrow { color: var(--muted); font-size: 18px; }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.search-button { padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+.options { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.error { color: var(--bad); font-size: 12px; }

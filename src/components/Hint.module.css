@@ -1,0 +1,6 @@
+/* Status dot + text: green for good, amber to check, red for removal. */
+.hint { font-size: 12px; display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.hint::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.exact, .keep { color: var(--good); }
+.partial { color: var(--warn); }
+.remove { color: var(--bad); }

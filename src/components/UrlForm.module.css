@@ -1,0 +1,4 @@
+/* "Paste a 7TV emote URL" form on a card. */
+.form { display: flex; gap: 6px; }
+.form input { padding: 8px 10px; font-size: 13px; }
+.form button { padding: 8px 12px; font-size: 13px; }

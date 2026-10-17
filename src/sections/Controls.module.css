@@ -1,0 +1,29 @@
+/* Top panel: channel, base set, event, token and the find button. */
+/* The panel's backdrop-filter makes it a stacking context; lift it so the tooltip overlaps the panels below. */
+.controls {
+  display: grid; grid-template-columns: 1.2fr 1fr .8fr 1.2fr auto; gap: 14px; align-items: end;
+  position: relative; z-index: 5; padding-bottom: 28px;
+}
+@media (max-width: 900px) { .controls { grid-template-columns: 1fr 1fr; } }
+
+.token-field { position: relative; }
+.info {
+  display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 4px;
+  border-radius: 50%; border: 1px solid var(--muted); font-size: 10px; text-transform: none; cursor: help;
+}
+.tooltip {
+  position: absolute; top: calc(100% + 24px); left: 0; z-index: 20; width: 320px; padding: 14px 16px;
+  background: #1b1b22; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .5);
+  font-size: 13px; line-height: 1.5; color: var(--text);
+  opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .15s, transform .15s, visibility .15s;
+}
+.token-field:hover .tooltip { opacity: 1; visibility: visible; transform: none; }
+.tooltip ol { margin: 8px 0; padding-left: 18px; }
+.tooltip li { margin: 4px 0; }
+.tooltip code {
+  display: block; margin-top: 6px; padding: 6px 8px; border-radius: 6px;
+  background: rgba(0, 0, 0, .4); color: var(--accent); font-family: Consolas, "Cascadia Code", monospace; font-size: 12px;
+  user-select: all;
+}
+.tooltip kbd { padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface-2); font-size: 11px; }
+.tooltip em { display: block; color: var(--warn); font-style: normal; font-size: 12px; }

@@ -1,0 +1,5 @@
+/* "Name in set" input on a card. */
+.field { display: flex; align-items: center; gap: 8px; }
+.field span { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.field input { padding: 7px 10px; font-size: 13px; }
+.field input.renamed { border-color: rgba(169, 112, 255, .6); }

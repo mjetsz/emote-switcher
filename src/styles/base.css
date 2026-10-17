@@ -1,0 +1,59 @@
+/* Global: theme variables, page layout, form controls and buttons shared by every component. */
+:root {
+  --bg: #0e0e12;
+  --surface: rgba(255, 255, 255, .04);
+  --surface-2: rgba(255, 255, 255, .07);
+  --border: rgba(255, 255, 255, .08);
+  --text: #f4f4f6;
+  --muted: #9a9aa8;
+  --accent: #a970ff;
+  --accent-2: #6d5dfc;
+  --good: #3ddc97;
+  --warn: #f5b84b;
+  --bad: #ff6b81;
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1000px 500px at 10% -10%, rgba(169, 112, 255, .18), transparent 60%),
+    radial-gradient(800px 400px at 100% 0%, rgba(109, 93, 252, .14), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding-bottom: 96px;
+}
+.container { max-width: 1280px; margin: 0 auto; padding: 32px 24px; }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; backdrop-filter: blur(12px); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+
+/* Labelled form field: uppercase caption above an input or select. */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+/* Hangs below the input in the panel's padding so it doesn't push this field out of line with the others. */
+.field > small { position: absolute; top: calc(100% + 4px); left: 2px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.inline { display: flex; gap: 8px; }
+
+input, select, button { font: inherit; color: inherit; }
+input, select {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  background: rgba(0, 0, 0, .25); border: 1px solid var(--border); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(169, 112, 255, .2); }
+select option { background: #1b1b22; }
+button {
+  padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); cursor: pointer; font-weight: 600; white-space: nowrap;
+  transition: transform .1s, background .15s, opacity .15s;
+}
+button:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; box-shadow: 0 6px 20px rgba(169, 112, 255, .3); }
+button.primary:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }

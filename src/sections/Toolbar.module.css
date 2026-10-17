@@ -1,0 +1,11 @@
+/* Search box, filter tabs and the emote count above the grid. */
+.toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 20px 0 16px; }
+.search { position: relative; flex: 1; min-width: 220px; }
+.search input { padding-left: 36px; }
+/* Magnifying glass drawn with the two pseudo-elements. */
+.search::before { content: ""; position: absolute; left: 13px; top: 50%; width: 11px; height: 11px; border: 2px solid var(--muted); border-radius: 50%; transform: translateY(-60%); }
+.search::after { content: ""; position: absolute; left: 24px; top: 58%; width: 6px; height: 2px; background: var(--muted); transform: rotate(45deg); }
+.tabs { display: flex; background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.tabs button { border: none; background: transparent; padding: 7px 12px; font-weight: 500; color: var(--muted); }
+.tabs button.active { background: var(--surface-2); color: var(--text); }
+.count { color: var(--muted); font-size: 13px; }
