@@ -186,6 +186,108 @@ const MODES = [
   ["drop", "Drop", "Leave this emote out of the festive set"],
 ];
 
+function optionButtons(options, selectedId, onPick) {
+  if (options.length === 0) return null;
+  return el(
+    "div",
+    { class: "options" },
+    ...options.map((option) =>
+      el(
+        "button",
+        {
+          type: "button",
+          class: "option" + (option.id === selectedId ? " selected" : ""),
+          title: option.name,
+          onclick: () => onPick(option),
+        },
+        el("img", {
+          src: emoteImg(option.id),
+          alt: option.name,
+          loading: "lazy",
+        }),
+        el("span", {}, option.name),
+        option.current
+          ? el("em", {}, "current")
+          : option.custom
+            ? el("em", {}, "custom")
+            : null,
+      ),
+    ),
+  );
+}
+
+const withCustom = (options, emote) => [
+  ...options.filter((o) => !o.custom && o.id !== emote.id),
+  { ...emote, custom: true },
+];
+
+// Looks up a pasted 7TV URL and hands the emote to onEmote; failures end up in item.error.
+function urlForm(item, onEmote, refresh) {
+  const input = el("input", {
+    type: "text",
+    placeholder: "Paste a 7TV emote URL",
+    spellcheck: false,
+  });
+  const button = el("button", { type: "submit" }, "Use");
+  return el(
+    "form",
+    {
+      class: "url-form",
+      onsubmit: async (e) => {
+        e.preventDefault();
+        const value = input.value.trim();
+        if (!value) return;
+        button.disabled = true;
+        try {
+          const emote = await getEmote(parseEmoteID(value));
+          item.error = "";
+          onEmote(emote);
+        } catch (err) {
+          item.error = err.message;
+        }
+        refresh();
+      },
+    },
+    input,
+    button,
+  );
+}
+
+function searchButton(item, name, onclick) {
+  return el(
+    "button",
+    {
+      type: "button",
+      class: "search-one",
+      disabled: item.searching,
+      title: `Search ${els.event.value || "other"} variants of ${name}`,
+      onclick,
+    },
+    item.searching
+      ? "Searching..."
+      : item.searched
+        ? "Search again"
+        : "Find variants",
+  );
+}
+
+function nameField(value, placeholder, renamed, oninput, onchange) {
+  return el(
+    "label",
+    { class: "name-field", title: "Name this emote gets in the festive set" },
+    el("span", {}, "Name in set"),
+    el("input", {
+      type: "text",
+      value,
+      placeholder,
+      spellcheck: false,
+      class: renamed ? "renamed" : "",
+      oninput: (e) => oninput(e.target.value),
+      onchange,
+    }),
+  );
+}
+
 function renderCard(row) {
   const target =
     row.mode === "change"
@@ -236,132 +338,57 @@ function renderCard(row) {
     ),
   );
 
-  const nameInput = el("input", {
-    type: "text",
-    value: aliasOf(row),
-    placeholder: row.original.name,
-    spellcheck: false,
-    class: isRenamed(row) ? "renamed" : "",
-    oninput: (e) => {
-      row.alias = e.target.value;
-      saveAliases();
-      updateExtras();
-      updateSummary();
-    },
-    onchange: () => update(row),
-  });
-  const nameField = el(
-    "label",
-    { class: "name-field", title: "Name this emote gets in the festive set" },
-    el("span", {}, "Name in set"),
-    nameInput,
-  );
-
-  const options =
-    row.options.length === 0
-      ? null
-      : el(
-          "div",
-          { class: "options" },
-          ...row.options.map((option) =>
-            el(
-              "button",
-              {
-                type: "button",
-                class:
-                  "option" +
-                  (row.mode === "change" && option.id === row.selected
-                    ? " selected"
-                    : ""),
-                title: option.name,
-                onclick: () => {
-                  row.touched = true;
-                  row.selected = option.id;
-                  row.mode = "change";
-                  update(row);
-                },
-              },
-              el("img", {
-                src: emoteImg(option.id),
-                alt: option.name,
-                loading: "lazy",
-              }),
-              el("span", {}, option.name),
-              option.current
-                ? el("em", {}, "current")
-                : option.custom
-                  ? el("em", {}, "custom")
-                  : null,
-            ),
-          ),
-        );
-
-  const urlInput = el("input", {
-    type: "text",
-    placeholder: "Paste a 7TV emote URL",
-    spellcheck: false,
-  });
-  const urlButton = el("button", { type: "submit" }, "Use");
-  const form = el(
-    "form",
-    {
-      class: "url-form",
-      onsubmit: async (e) => {
-        e.preventDefault();
-        const value = urlInput.value.trim();
-        if (!value) return;
-        urlButton.disabled = true;
-        try {
-          const emote = await getEmote(parseEmoteID(value));
-          row.options = [
-            ...row.options.filter((o) => !o.custom && o.id !== emote.id),
-            { ...emote, custom: true },
-          ];
-          row.touched = true;
-          row.selected = emote.id;
-          row.mode = "change";
-          row.error = "";
-        } catch (err) {
-          row.error = err.message;
-        }
-        update(row);
-      },
-    },
-    urlInput,
-    urlButton,
-  );
-
+  const pick = (emote) => {
+    row.touched = true;
+    row.selected = emote.id;
+    row.mode = "change";
+  };
   const cardClass =
     row.mode === "drop"
       ? " dropped"
       : row.mode === "change" || isRenamed(row)
         ? " changing"
         : "";
-  const searchButton = el(
-    "button",
-    {
-      type: "button",
-      class: "search-one",
-      disabled: row.searching,
-      title: `Search ${els.event.value || "other"} variants of ${row.original.name}`,
-      onclick: () => searchRow(row),
-    },
-    row.searching
-      ? "Searching..."
-      : row.searched
-        ? "Search again"
-        : "Find variants",
-  );
 
   return el(
     "article",
     { class: "card" + cardClass },
     head,
     modes,
-    el("div", { class: "card-row" }, hintFor(row) ?? el("span"), searchButton),
-    options,
-    nameField,
-    form,
+    el(
+      "div",
+      { class: "card-row" },
+      hintFor(row) ?? el("span"),
+      searchButton(row, row.original.name, () => searchRow(row)),
+    ),
+    optionButtons(
+      row.options,
+      row.mode === "change" ? row.selected : null,
+      (option) => {
+        pick(option);
+        update(row);
+      },
+    ),
+    nameField(
+      aliasOf(row),
+      row.original.name,
+      isRenamed(row),
+      (value) => {
+        row.alias = value;
+        saveAliases();
+        updateExtras();
+        updateSummary();
+      },
+      () => update(row),
+    ),
+    urlForm(
+      row,
+      (emote) => {
+        row.options = withCustom(row.options, emote);
+        pick(emote);
+      },
+      () => update(row),
+    ),
     el("div", { class: "error" }, row.error || ""),
   );
 }
@@ -377,68 +404,163 @@ function update(row) {
   updateSummary();
 }
 
+// Emotes in the festive set (or added to it) that have no base emote; extra.emote is what's there now.
+const newExtra = (emote, added = false) => ({
+  emote,
+  added,
+  keep: true,
+  alias: "",
+  options: [{ ...emote, current: true }],
+  selected: emote.id,
+  searched: false,
+  searching: false,
+  error: "",
+});
+const extraName = (x) => x.alias.trim() || x.emote.name;
+const extraTarget = (x) =>
+  x.options.find((o) => o.id === x.selected) || x.emote;
+const extraChanged = (x) =>
+  extraTarget(x).id !== x.emote.id || extraName(x) !== x.emote.name;
+
+function updateExtra(extra) {
+  const next = renderExtraCard(extra);
+  extra.el.replaceWith(next);
+  extra.el = next;
+  updateExtras();
+  updateSummary();
+}
+
 function renderExtraCard(extra) {
-  if (extra.added) {
-    const remove = el(
+  const setKeep = (keep) => {
+    if (!keep && extra.added) {
+      state.extras = state.extras.filter((x) => x !== extra);
+      extra.el.remove();
+      updateExtras();
+      updateSummary();
+      return;
+    }
+    extra.keep = keep;
+    updateExtra(extra);
+  };
+  const modes = el(
+    "div",
+    { class: "segmented" },
+    el(
       "button",
       {
         type: "button",
-        onclick: () => {
-          state.extras = state.extras.filter((x) => x !== extra);
-          extra.el.remove();
-          updateExtras();
-          updateSummary();
-        },
+        class: "keep" + (extra.keep ? " active" : ""),
+        title: "Keep this emote in the festive set",
+        onclick: () => setKeep(true),
       },
-      "Remove",
-    );
-    return el(
-      "article",
-      { class: "card changing" },
-      el(
-        "div",
-        { class: "card-head" },
-        el("div", { class: "pair" }, emoteFigure(extra.emote)),
-        remove,
-      ),
-      el("div", { class: "hint keep" }, "Will be added on save"),
-    );
-  }
-  const toggle = el("input", {
-    type: "checkbox",
-    checked: extra.keep,
-    onchange: (e) => {
-      extra.keep = e.target.checked;
-      const next = renderExtraCard(extra);
-      extra.el.replaceWith(next);
-      extra.el = next;
-      updateExtras();
-      updateSummary();
-    },
-  });
-  return el(
-    "article",
-    { class: "card" + (extra.keep ? "" : " removing") },
-    el(
-      "div",
-      { class: "card-head" },
-      el("div", { class: "pair" }, emoteFigure(extra.emote)),
-      el(
-        "label",
-        {
-          class: "switch",
-          title: extra.keep ? "Keep in festive set" : "Remove from festive set",
-        },
-        toggle,
-        el("span"),
-      ),
+      "Keep",
     ),
     el(
-      "div",
-      { class: "hint " + (extra.keep ? "keep" : "remove") },
-      extra.keep ? "Kept in festive set" : "Will be removed on save",
+      "button",
+      {
+        type: "button",
+        class: "drop" + (extra.keep ? "" : " active"),
+        title: extra.added
+          ? "Don't add this emote"
+          : "Remove this emote from the festive set on save",
+        onclick: () => setKeep(false),
+      },
+      extra.added ? "Remove" : "Drop",
     ),
   );
+
+  const head = el(
+    "div",
+    { class: "card-head" },
+    el(
+      "div",
+      { class: "pair" },
+      emoteFigure(null, "", extra.added ? "Added" : "Not in base"),
+      el("span", { class: "arrow" }, "\u2192"),
+      extra.keep
+        ? emoteFigure(extraTarget(extra), "replacement", extraName(extra))
+        : emoteFigure(null, "replacement", "Left out"),
+    ),
+  );
+
+  const hint = !extra.keep
+    ? el("div", { class: "hint remove" }, "Will be removed on save")
+    : extra.added
+      ? el("div", { class: "hint keep" }, "Will be added on save")
+      : extraChanged(extra)
+        ? el("div", { class: "hint partial" }, "Will be updated on save")
+        : el("div", { class: "hint keep" }, "Kept in festive set");
+
+  const cardClass = !extra.keep
+    ? " dropped"
+    : extra.added || extraChanged(extra)
+      ? " changing"
+      : "";
+  return el(
+    "article",
+    { class: "card" + cardClass },
+    head,
+    modes,
+    el(
+      "div",
+      { class: "card-row" },
+      hint,
+      searchButton(extra, extra.emote.name, () => searchExtra(extra)),
+    ),
+    optionButtons(
+      extra.options.length > 1 ? extra.options : [],
+      extra.selected,
+      (option) => {
+        extra.selected = option.id;
+        updateExtra(extra);
+      },
+    ),
+    nameField(
+      extraName(extra),
+      extra.emote.name,
+      extraName(extra) !== extra.emote.name,
+      (value) => {
+        extra.alias = value;
+        updateSummary();
+      },
+      () => updateExtra(extra),
+    ),
+    urlForm(
+      extra,
+      (emote) => {
+        extra.options = withCustom(extra.options, emote);
+        extra.selected = emote.id;
+      },
+      () => updateExtra(extra),
+    ),
+    el("div", { class: "error" }, extra.error || ""),
+  );
+}
+
+async function searchExtra(extra) {
+  extra.searching = true;
+  extra.error = "";
+  updateExtra(extra);
+  try {
+    const { variants } = await findVariantCandidates(
+      extra.emote,
+      EVENT_TAGS[els.event.value] ?? [],
+    );
+    const current = extra.options.filter((o) => o.current);
+    const custom = extra.options.filter((o) => o.custom);
+    extra.options = [
+      ...current,
+      ...variants.filter(
+        (v) => ![...current, ...custom].some((o) => o.id === v.id),
+      ),
+      ...custom,
+    ];
+    extra.searched = true;
+  } catch (err) {
+    extra.error = err.message;
+  }
+  extra.searching = false;
+  updateExtra(extra);
 }
 
 function renderExtras() {
@@ -513,9 +635,9 @@ function addEmote(emote) {
     );
   const taken =
     state.rows.some((r) => r.mode !== "drop" && aliasOf(r) === name) ||
-    state.extras.some((x) => x.keep && x.emote.name === name);
+    state.extras.some((x) => x.keep && extraName(x) === name);
   if (taken) throw new Error(`"${name}" is already used in the festive set`);
-  const extra = { emote: { id: emote.id, name }, keep: true, added: true };
+  const extra = newExtra({ id: emote.id, name }, true);
   extra.el = renderExtraCard(extra);
   state.extras.push(extra);
   els.extrasGrid.append(extra.el);
@@ -573,7 +695,7 @@ async function loadExtras() {
     const originalNames = new Set(state.rows.map((r) => r.original.name));
     state.extras = emotes
       .filter((e) => !originalNames.has(e.name))
-      .map((e) => ({ emote: e, keep: true }));
+      .map((e) => newExtra(e));
     renderExtras();
     applyCurrent(emotes, !!existing);
   } catch (err) {
@@ -686,8 +808,8 @@ function updateExtras() {
   );
   for (const extra of state.extras) {
     const taken = !extra.added && aliases.has(extra.emote.name);
-    extra.el.hidden =
-      taken || (!!q && !extra.emote.name.toLowerCase().includes(q));
+    const text = (extra.emote.name + " " + extraName(extra)).toLowerCase();
+    extra.el.hidden = taken || (!!q && !text.includes(q));
   }
   els.extrasSection.hidden = state.rows.length === 0;
 }
@@ -718,11 +840,15 @@ function updateSummary() {
   ).length;
   const removing = state.extras.filter((x) => !x.keep).length;
   const adding = state.extras.filter((x) => x.added).length;
+  const extrasChanged = state.extras.filter(
+    (x) => x.keep && !x.added && extraChanged(x),
+  ).length;
   els.summary.textContent = state.rows.length
     ? `${changing} of ${state.rows.length} will be replaced` +
       (dropping ? `, ${dropping} dropped` : "") +
       (renamed ? `, ${renamed} renamed` : "") +
       (adding ? `, ${adding} added` : "") +
+      (extrasChanged ? `, ${extrasChanged} extras changed` : "") +
       (removing ? `, ${removing} extras removed` : "")
     : "";
   els.targetName.placeholder = state.setName ? defaultSetName() : "Set name";
@@ -985,23 +1111,32 @@ async function save() {
     if (isRenamed(row)) renamed++;
     entries.push({ id: replace ? row.selected : row.original.id, name: alias });
   }
-  const existingExtras = state.extras.filter((x) => !x.added);
-  const keepExtras = new Set(
-    existingExtras.filter((x) => x.keep).map((x) => x.emote.name),
-  );
-  const removing = existingExtras.length - keepExtras.size;
-  let added = 0;
+  const rowNames = new Set(seen.keys());
+  let added = 0,
+    removing = 0,
+    extrasChanged = 0;
   for (const extra of state.extras) {
-    if (!extra.added) continue;
-    const alias = extra.emote.name;
-    if (seen.has(alias) || keepExtras.has(alias))
+    if (!extra.keep) {
+      removing++;
+      continue;
+    }
+    // A base emote now uses this name, so its saved entry gets replaced anyway.
+    if (!extra.added && rowNames.has(extra.emote.name)) continue;
+    const alias = extraName(extra);
+    if (/\s/.test(alias) || alias.length > 100)
       return setStatus(
-        `The added emote "${alias}" uses a name that's already in the festive set`,
+        `"${alias}" is not a valid name: no spaces, max 100 characters`,
+        true,
+      );
+    if (seen.has(alias))
+      return setStatus(
+        `"${alias}" is used more than once in the festive set`,
         true,
       );
     seen.set(alias, alias);
-    entries.push({ id: extra.emote.id, name: alias });
-    added++;
+    entries.push({ id: extraTarget(extra).id, name: alias });
+    if (extra.added) added++;
+    else if (extraChanged(extra)) extrasChanged++;
   }
   const name = targetSetName();
   if (name.length > 100)
@@ -1010,6 +1145,7 @@ async function save() {
   if (dropped) parts.push(`${dropped} dropped`);
   if (renamed) parts.push(`${renamed} renamed`);
   if (added) parts.push(`${added} added`);
+  if (extrasChanged) parts.push(`${extrasChanged} extras changed`);
   if (removing) parts.push(`${removing} extras removed`);
   let message = `Save "${name}" with ${parts.join(", ")}?\nAn existing set with that name will be overwritten.`;
   if (name === state.setName && els.event.value)
@@ -1025,7 +1161,7 @@ async function save() {
       state.userId,
       name,
       entries,
-      keepExtras,
+      new Set(),
       (done, total) => showProgress(label, done, total),
     );
     hideProgress();
