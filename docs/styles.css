@@ -140,6 +140,8 @@ button.primary:hover:not(:disabled) { filter: brightness(1.08); background: line
 .hint.exact, .hint.keep { color: var(--good); }
 .hint.partial { color: var(--warn); }
 .hint.remove { color: var(--bad); }
+.card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.search-one { padding: 5px 10px; font-size: 12px; white-space: nowrap; }
 
 .options { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
 .option { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; width: 72px; flex-shrink: 0; border: 2px solid transparent; background: rgba(0, 0, 0, .2); font-weight: 500; }

@@ -22,8 +22,8 @@ const channelPattern = /^[A-Za-z0-9_]{1,25}$/;
 // Bare 7TV emote ID, or one inside a 7tv.app / cdn.7tv.app URL.
 const emoteIDPattern = /(?:^|\/)([0-9A-Za-z]{24,26})(?:$|[/?#])/;
 
-const SEARCH_QUERY = `query SearchEmotes($query: String!, $page: Int, $limit: Int, $filter: EmoteSearchFilter) {
-  emotes(query: $query, page: $page, limit: $limit, filter: $filter) {
+const SEARCH_QUERY = `query SearchEmotes($query: String!, $page: Int, $limit: Int, $filter: EmoteSearchFilter, $sort: Sort) {
+  emotes(query: $query, page: $page, limit: $limit, filter: $filter, sort: $sort) {
     items { id name tags }
   }
 }`;
@@ -146,26 +146,37 @@ export async function findEmoteSetByName(userId, name) {
   return sets.find((s) => s.name === name) || null;
 }
 
-// Festive variants of emote: an exact (case-insensitive) name match if one exists, otherwise names containing it.
-export async function findVariantCandidates(emote, tags) {
+// Up to count variants of emote, most popular first. With tags: a tagged exact (case-insensitive) name match,
+// then tagged names containing it, then untagged names containing it plus an event word.
+// Without tags: any other emote with the same name, then names containing it.
+export async function findVariantCandidates(emote, tags = [], count = 3) {
   const data = await gql(SEARCH_QUERY, {
     query: emote.name,
     page: 1,
     limit: 100,
     filter: { exact_match: false, ignore_tags: true },
+    sort: { value: "popularity", order: "DESCENDING" },
   });
   const name = emote.name.toLowerCase();
   const wanted = tags.map((t) => t.toLowerCase());
-  const partial = [];
+  let exact = null;
+  const tagged = [];
+  const named = [];
   for (const item of data.emotes.items) {
-    if (!(item.tags || []).some((t) => wanted.includes(t.toLowerCase())))
-      continue;
     const itemName = item.name.toLowerCase();
     if (item.id === emote.id || !itemName.includes(name)) continue;
-    if (itemName === name) return { exact: toEmote(item), partial: [] };
-    partial.push(toEmote(item));
+    if (
+      wanted.length === 0 ||
+      (item.tags || []).some((t) => wanted.includes(t.toLowerCase()))
+    ) {
+      if (itemName === name && !exact) exact = toEmote(item);
+      else tagged.push(toEmote(item));
+    } else if (wanted.some((t) => itemName.replace(name, "").includes(t))) {
+      named.push(toEmote(item));
+    }
   }
-  return { exact: null, partial };
+  const variants = [exact, ...tagged, ...named].filter(Boolean).slice(0, count);
+  return { exact: !!exact, variants };
 }
 
 // Makes the user's set called name contain exactly emotes (each id under its name), creating it if needed.

@@ -335,12 +335,28 @@ function renderCard(row) {
       : row.mode === "change" || isRenamed(row)
         ? " changing"
         : "";
+  const searchButton = el(
+    "button",
+    {
+      type: "button",
+      class: "search-one",
+      disabled: row.searching,
+      title: `Search ${els.event.value || "other"} variants of ${row.original.name}`,
+      onclick: () => searchRow(row),
+    },
+    row.searching
+      ? "Searching..."
+      : row.searched
+        ? "Search again"
+        : "Find variants",
+  );
+
   return el(
     "article",
     { class: "card" + cardClass },
     head,
     modes,
-    hintFor(row),
+    el("div", { class: "card-row" }, hintFor(row) ?? el("span"), searchButton),
     options,
     nameField,
     form,
@@ -626,7 +642,9 @@ function updateExtras() {
 }
 
 function defaultSetName() {
-  return `${state.setName}-${els.event.value}`;
+  return els.event.value
+    ? `${state.setName}-${els.event.value}`
+    : state.setName;
 }
 
 function targetSetName() {
@@ -838,25 +856,41 @@ function mergeVariants(row, found, exact) {
   }
 }
 
+async function searchRow(row) {
+  row.searching = true;
+  row.error = "";
+  update(row);
+  try {
+    const { exact, variants } = await findVariantCandidates(
+      row.original,
+      EVENT_TAGS[els.event.value] ?? [],
+    );
+    mergeVariants(row, variants, exact);
+  } catch (err) {
+    row.error = err.message;
+  }
+  row.searching = false;
+  update(row);
+}
+
 async function findVariants() {
   if (state.rows.length === 0) await loadChannel();
   if (state.rows.length === 0) return;
 
-  const event = els.event.value;
-  const tags = EVENT_TAGS[event];
+  const event = els.event.value || "other";
+  const tags = EVENT_TAGS[els.event.value] ?? [];
   const label = `Searching ${event} variants`;
   let withVariants = 0;
   setBusy(true);
   try {
     for (const [i, row] of state.rows.entries()) {
       showProgress(label, i, state.rows.length);
-      const { exact, partial } = await findVariantCandidates(
+      const { exact, variants } = await findVariantCandidates(
         row.original,
         tags,
       );
-      const found = exact ? [exact] : partial.slice(0, 10);
-      mergeVariants(row, found, !!exact);
-      if (found.length) withVariants++;
+      mergeVariants(row, variants, exact);
+      if (variants.length) withVariants++;
     }
     hideProgress();
     setStatus(`Found ${event} variants for ${withVariants} emotes`);
@@ -927,7 +961,7 @@ async function save() {
   if (added) parts.push(`${added} added`);
   if (removing) parts.push(`${removing} extras removed`);
   let message = `Save "${name}" with ${parts.join(", ")}?\nAn existing set with that name will be overwritten.`;
-  if (name === state.setName)
+  if (name === state.setName && els.event.value)
     message += `\n\nWARNING: "${name}" is your base emote set, it will be overwritten.`;
   if (!confirm(message)) return;
 
@@ -948,7 +982,8 @@ async function save() {
       `${created ? "Created" : "Updated"} ${name}: ${changed} replaced, ${dropped} dropped` +
         (added ? `, ${added} added` : ""),
     );
-    loadExtras();
+    if (name === state.setName) loadChannel(state.setId);
+    else loadExtras();
   } catch (err) {
     hideProgress();
     setStatus("Error: " + err.message, true);
@@ -999,7 +1034,8 @@ els.tabs.addEventListener("click", (e) => {
 // ?channel=name&event=christmas preselects; otherwise the last loaded channel is reused.
 const params = new URLSearchParams(location.search);
 const startEvent = params.get("event");
-if (startEvent && EVENT_TAGS[startEvent]) els.event.value = startEvent;
+if (startEvent != null && (startEvent === "" || EVENT_TAGS[startEvent]))
+  els.event.value = startEvent;
 els.channel.value =
   params.get("channel") || localStorage.getItem(LAST_CHANNEL_KEY) || "";
 renderAll();
