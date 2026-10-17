@@ -146,6 +146,17 @@ export async function findEmoteSetByName(userId, name) {
   return sets.find((s) => s.name === name) || null;
 }
 
+export async function searchEmotes(query, limit = 12) {
+  const data = await gql(SEARCH_QUERY, {
+    query,
+    page: 1,
+    limit,
+    filter: { exact_match: false, ignore_tags: true },
+    sort: { value: "popularity", order: "DESCENDING" },
+  });
+  return data.emotes.items.map(toEmote);
+}
+
 // Up to count variants of emote, most popular first. With tags: a tagged exact (case-insensitive) name match,
 // then tagged names containing it, then untagged names containing it plus an event word.
 // Without tags: any other emote with the same name, then names containing it.

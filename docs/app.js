@@ -8,6 +8,7 @@ import {
   getEmote,
   findEmoteSetByName,
   findVariantCandidates,
+  searchEmotes,
   syncEmoteSet,
 } from "./seventv.js";
 
@@ -37,6 +38,7 @@ const els = {
   addUrl: $("add-url"),
   addName: $("add-name"),
   add: $("add"),
+  addResults: $("add-results"),
 };
 const copyEls = {
   form: $("source-form"),
@@ -446,35 +448,84 @@ function renderExtras() {
   updateSummary();
 }
 
+// A URL or ID adds that emote right away; anything else searches 7TV by name and lists results to pick from.
 async function addExtra() {
   const value = els.addUrl.value.trim();
   if (!value) return;
   els.add.disabled = true;
   try {
-    const emote = await getEmote(parseEmoteID(value));
-    const name = els.addName.value.trim() || emote.name;
-    if (/\s/.test(name) || name.length > 100)
-      throw new Error(
-        `"${name}" is not a valid name: no spaces, max 100 characters`,
-      );
-    const taken =
-      state.rows.some((r) => r.mode !== "drop" && aliasOf(r) === name) ||
-      state.extras.some((x) => x.keep && x.emote.name === name);
-    if (taken) throw new Error(`"${name}" is already used in the festive set`);
-    const extra = { emote: { id: emote.id, name }, keep: true, added: true };
-    extra.el = renderExtraCard(extra);
-    state.extras.push(extra);
-    els.extrasGrid.append(extra.el);
-    els.addUrl.value = "";
-    els.addName.value = "";
-    updateExtras();
-    updateSummary();
-    setStatus(`${name} will be added on save`);
+    let id = null;
+    try {
+      id = parseEmoteID(value);
+    } catch {}
+    if (id) {
+      addEmote(await getEmote(id));
+    } else {
+      showAddResults(await searchEmotes(value), value);
+    }
   } catch (err) {
     setStatus("Error: " + err.message, true);
   } finally {
     els.add.disabled = state.busy;
   }
+}
+
+function showAddResults(results, query) {
+  els.addResults.hidden = false;
+  if (results.length === 0) {
+    els.addResults.replaceChildren(
+      el("div", { class: "hint" }, `No emotes found for "${query}"`),
+    );
+    return;
+  }
+  els.addResults.replaceChildren(
+    ...results.map((emote) =>
+      el(
+        "button",
+        {
+          type: "button",
+          class: "option",
+          title: emote.name,
+          onclick: () => {
+            try {
+              addEmote(emote);
+            } catch (err) {
+              setStatus("Error: " + err.message, true);
+            }
+          },
+        },
+        el("img", {
+          src: emoteImg(emote.id),
+          alt: emote.name,
+          loading: "lazy",
+        }),
+        el("span", {}, emote.name),
+      ),
+    ),
+  );
+}
+
+function addEmote(emote) {
+  const name = els.addName.value.trim() || emote.name;
+  if (/\s/.test(name) || name.length > 100)
+    throw new Error(
+      `"${name}" is not a valid name: no spaces, max 100 characters`,
+    );
+  const taken =
+    state.rows.some((r) => r.mode !== "drop" && aliasOf(r) === name) ||
+    state.extras.some((x) => x.keep && x.emote.name === name);
+  if (taken) throw new Error(`"${name}" is already used in the festive set`);
+  const extra = { emote: { id: emote.id, name }, keep: true, added: true };
+  extra.el = renderExtraCard(extra);
+  state.extras.push(extra);
+  els.extrasGrid.append(extra.el);
+  els.addUrl.value = "";
+  els.addName.value = "";
+  els.addResults.hidden = true;
+  els.addResults.replaceChildren();
+  updateExtras();
+  updateSummary();
+  setStatus(`${name} will be added on save`);
 }
 
 // Mirrors the existing festive set: its emote under each row's name becomes a "current" option, and
